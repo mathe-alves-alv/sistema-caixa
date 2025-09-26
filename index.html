@@ -75,7 +75,6 @@
     <div class="container">
         <h1>Fechamento de Caixa</h1>
         <input type="date" id="data-fechamento">
-
         <div class="list-header">
             <div>Forma de Pagamento</div>
             <div style="text-align: right;">Lançar Valor</div>
@@ -83,18 +82,15 @@
             <div class="header-total">Total</div>
         </div>
         <div id="formas-pagamento"></div>
-
         <div class="botoes">
             <button id="btn-limpar">Limpar Tela</button>
             <button id="btn-ver-resumo">Calcular Resumo da Tela</button>
             <button id="btn-salvar-caixa">Salvar na Nuvem</button>
         </div>
-
         <div id="resumo">
             <h2 id="resumo-titulo">Resumo do Caixa</h2>
             <div id="resultado-fechamento"></div>
         </div>
-        
         <div id="historico">
             <h2>Histórico de Fechamentos Salvos</h2>
             <div id="lista-historico"><p>Carregando histórico...</p></div>
@@ -104,7 +100,7 @@
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const SUPABASE_URL = 'https://rqeqghjlbojbklmiyshp.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxZXFnaGpsYm9qYmtsbWl5c2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MTQzNzYsImV4cCI6MjA3NDQ5MDM3Nn0.oQNkIPMwmcNKCB-I4Iq2GlKqazGSjxarLtfuZbvlX4o';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxZXFnaGpsYm9qYmtsbWl5c2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MTQzNzYsImV4cCI6MjA3NDQ5MDM3Nn0.oQNkIPMwmcNKCB-I4Iq2GlKqazGSjxarLtfuZbvlX4o';
 
         const { createClient } = supabase;
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -235,12 +231,15 @@
             if (error) {
                 console.error("Erro ao salvar:", error.message);
                 alert("Ocorreu um erro ao salvar o fechamento: " + error.message);
+                // CORREÇÃO: Garante que o botão seja reativado mesmo em caso de erro.
+                btnSalvar.disabled = false;
+                btnSalvar.innerText = "Salvar na Nuvem";
             } else {
                 alert(`Fechamento do dia ${new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')} salvo/atualizado com sucesso por ${nomeOperador}!`);
+                btnSalvar.disabled = false;
+                btnSalvar.innerText = "Salvar na Nuvem";
                 await carregarHistorico();
             }
-            btnSalvar.disabled = false;
-            btnSalvar.innerText = "Salvar na Nuvem";
         };
 
         const carregarHistorico = async () => {
@@ -255,7 +254,7 @@
                 return;
             }
             
-            if (data.length === 0) {
+            if (!data || data.length === 0) {
                 listaHistoricoDiv.innerHTML = "<p>Nenhum fechamento salvo ainda.</p>"; return;
             }
 
@@ -279,15 +278,12 @@
             });
         };
 
-        // CORREÇÃO: Simplificando a busca para evitar o erro 406
         const carregarFechamentoDoDia = async (data) => {
-            todosOsLancamentos = {};
-            formasDePagamento.forEach(forma => atualizarTudo(forma));
-            resumoDiv.classList.remove('is-visible');
+            limparTelaSemConfirmacao(); // CORREÇÃO: Função auxiliar para limpar a tela sem perguntar
 
             const { data: fechamento, error } = await supabaseClient
                 .from('fechamentos')
-                .select('*') // Buscando todos os campos (*) em vez de apenas 'detalhes'
+                .select('*')
                 .eq('data_fechamento', data)
                 .single();
 
@@ -295,10 +291,18 @@
                  console.error("Erro ao carregar dia:", error);
             }
             
-            if (fechamento) {
-                todosOsLancamentos = fechamento.detalhes || {};
+            // CORREÇÃO: Acessar a propriedade 'detalhes' do objeto retornado
+            if (fechamento && fechamento.detalhes) {
+                todosOsLancamentos = fechamento.detalhes;
                 formasDePagamento.forEach(forma => atualizarTudo(forma));
             }
+        };
+
+        // Função auxiliar para evitar a confirmação ao carregar dados
+        const limparTelaSemConfirmacao = () => {
+            todosOsLancamentos = {};
+            formasDePagamento.forEach(forma => atualizarTudo(forma));
+            resumoDiv.classList.remove('is-visible');
         };
 
         const inicializar = async () => {
