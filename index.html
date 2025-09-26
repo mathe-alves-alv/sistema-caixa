@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fechamento de Caixa</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
     <style>
         :root {
@@ -61,11 +61,13 @@
         #resultado-fechamento p span { font-weight: 600; }
         #total-geral { margin-top: 15px; font-size: 1.5rem; font-weight: 600; color: var(--cor-sucesso); background-color: #f0fff4; padding: 20px; border-radius: 8px; }
         .historico-item {
-            display: flex; justify-content: space-between; padding: 15px; border-radius: 8px;
-            margin-bottom: 10px; cursor: pointer; border: 1px solid var(--cor-borda); transition: all 0.2s;
+            display: flex; flex-direction: column; align-items: flex-start;
+            padding: 15px; border-radius: 8px; margin-bottom: 10px;
+            cursor: pointer; border: 1px solid var(--cor-borda); transition: all 0.2s;
         }
         .historico-item:hover { border-color: var(--cor-principal); background-color: #f8f9fa; }
-        .historico-item.ativo { border-color: var(--cor-sucesso); background-color: #f0fff4; }
+        .historico-item-linha1 { display: flex; justify-content: space-between; width: 100%; font-weight: bold; }
+        .historico-item-linha2 { font-size: 0.9rem; color: var(--cor-texto-secundario); margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -100,7 +102,6 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- Conexão com o Supabase (JÁ COM SUAS CHAVES) ---
         const SUPABASE_URL = 'https://rqeqghjlbojbklmiyshp.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxZXFnaGpsYm9qYmtsbWl5c2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MTQzNzYsImV4cCI6MjA3NDQ5MDM3Nn0.oQNkIPMwmcNKCB-I4Iq2GlKqazGSjxarLtfuZbvlX4o';
 
@@ -110,6 +111,7 @@
         const formasDePagamento = ['CONSUMO ADM', 'CORTESIA', 'CREDITO', 'DEBITO', 'DINHEIRO', 'EVENTO', 'IFOOD', 'MARKETING', 'PERDAS', 'PIX', 'PIX MANUAL', 'TRANSFERENCIA', 'VOUCHER'];
         let todosOsLancamentos = {};
         
+        // ... (referências de elementos do DOM) ...
         const dataInput = document.getElementById('data-fechamento');
         const formasPagamentoDiv = document.getElementById('formas-pagamento');
         const btnSalvar = document.getElementById('btn-salvar-caixa');
@@ -143,9 +145,7 @@
         const lancarValor = (forma) => {
             const campoLancamento = document.getElementById(`lancamento-${sanitizarNomeParaId(forma)}`);
             const valor = parseFloat(campoLancamento.value.replace(',', '.'));
-            if (isNaN(valor) || valor === 0) {
-                campoLancamento.value = ''; return;
-            }
+            if (isNaN(valor) || valor === 0) { campoLancamento.value = ''; return; }
             if (!todosOsLancamentos[forma]) todosOsLancamentos[forma] = [];
             todosOsLancamentos[forma].push(valor);
             atualizarTudo(forma);
@@ -197,8 +197,14 @@
             resumoDiv.classList.add('is-visible');
         };
 
-        // --- FUNÇÕES DE BANCO DE DADOS (SUPABASE) ---
         const salvarFechamento = async () => {
+            // MELHORIA: Pedir nome do operador
+            const nomeOperador = window.prompt("Digite o nome do operador de caixa:");
+            if (!nomeOperador) { // Se o usuário cancelar ou deixar em branco
+                alert("O nome do operador é obrigatório para salvar.");
+                return;
+            }
+
             const data = dataInput.value;
             let totalGeral = 0;
             Object.values(todosOsLancamentos).forEach(lancamentos => {
@@ -217,8 +223,9 @@
                 .upsert({ 
                     data_fechamento: data, 
                     total_geral: totalGeral,
-                    detalhes: todosOsLancamentos
-                }, { onConflict: 'data_fechamento' }) // << MELHORIA IMPORTANTE
+                    detalhes: todosOsLancamentos,
+                    operador_caixa: nomeOperador // Enviando o novo campo
+                }, { onConflict: 'data_fechamento' })
                 .select()
                 .single();
 
@@ -226,7 +233,7 @@
                 console.error("Erro ao salvar:", error.message);
                 alert("Ocorreu um erro ao salvar o fechamento: " + error.message);
             } else {
-                alert(`Fechamento do dia ${new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')} salvo/atualizado com sucesso!`);
+                alert(`Fechamento do dia ${new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')} salvo/atualizado com sucesso por ${nomeOperador}!`);
                 await carregarHistorico();
             }
             btnSalvar.disabled = false;
@@ -234,14 +241,15 @@
         };
 
         const carregarHistorico = async () => {
+            // MELHORIA: Buscar também o operador_caixa
             const { data, error } = await supabaseClient
                 .from('fechamentos')
-                .select('data_fechamento, total_geral')
+                .select('data_fechamento, total_geral, operador_caixa')
                 .order('data_fechamento', { ascending: false });
 
             if (error) {
                 console.error("Erro ao carregar histórico:", error);
-                listaHistoricoDiv.innerHTML = `<p style="color: red;">Erro ao carregar o histórico. Verifique a conexão e as chaves de API.</p>`;
+                listaHistoricoDiv.innerHTML = `<p style="color: red;">Erro ao carregar o histórico. Verifique se o RLS está habilitado para SELECT.</p>`;
                 return;
             }
             
@@ -252,10 +260,20 @@
             listaHistoricoDiv.innerHTML = '';
             data.forEach(item => {
                 const dia = new Date(item.data_fechamento + 'T00:00:00').toLocaleDateString('pt-BR');
+                const operador = item.operador_caixa || 'N/A'; // Mostra N/A se for um registro antigo
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'historico-item';
                 itemDiv.dataset.data = item.data_fechamento;
-                itemDiv.innerHTML = `<strong>${dia}</strong> <span>${formatarMoeda(item.total_geral)}</span>`;
+                // MELHORIA: Exibir o operador
+                itemDiv.innerHTML = `
+                    <div class="historico-item-linha1">
+                        <span>${dia}</span>
+                        <span>${formatarMoeda(item.total_geral)}</span>
+                    </div>
+                    <div class="historico-item-linha2">
+                        Operador(a): ${operador}
+                    </div>
+                `;
                 listaHistoricoDiv.appendChild(itemDiv);
             });
         };
@@ -271,7 +289,7 @@
                 .eq('data_fechamento', data)
                 .single();
 
-            if (error && error.code !== 'PGRST116') { // Ignora erro "registro não encontrado"
+            if (error && error.code !== 'PGRST116') {
                  console.error("Erro ao carregar dia:", error);
             }
             
