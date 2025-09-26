@@ -44,17 +44,17 @@
         }
         input.lancamento-field:focus { outline: none; border-color: var(--cor-principal); box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15); }
         .total-field { text-align: right; font-weight: 600; font-size: 1.1rem; padding: 10px; }
-        button { border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+        button { border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; padding: 15px; font-size: 1rem; }
         button.btn-lancar { background-color: var(--cor-texto-secundario); color: white; padding: 10px 15px; font-size: 0.9rem; }
         button:hover { transform: translateY(-2px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         button:active { transform: translateY(-1px); }
         .lancamentos-detalhe { margin-top: 12px; padding-left: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
         .lancamento-tag { background-color: #e9ecef; color: #495057; padding: 5px 12px; border-radius: 15px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
         .remove-lancamento { background-color: var(--cor-perigo); color: white; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-weight: bold; line-height: 20px; text-align: center; }
-        .botoes { display: flex; justify-content: space-around; gap: 20px; margin-top: 30px; }
-        .botoes button { font-size: 1.1rem; padding: 15px 30px; flex-grow: 1; }
+        .botoes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 30px; }
         #btn-salvar-caixa { background-color: var(--cor-sucesso); color: white; }
         #btn-ver-resumo { background-color: var(--cor-principal); color: white; }
+        #btn-limpar { background-color: var(--cor-aviso); color: white; }
         #resumo { margin-top: 40px; opacity: 0; max-height: 0; overflow: hidden; transition: all 0.5s ease-in-out; }
         #resumo.is-visible { opacity: 1; max-height: 1000px; }
         #resultado-fechamento p { font-size: 1.1rem; display: flex; justify-content: space-between; padding: 12px; margin: 0; border-bottom: 1px solid #f1f3f5; }
@@ -85,8 +85,9 @@
         <div id="formas-pagamento"></div>
 
         <div class="botoes">
-            <button id="btn-ver-resumo">Ver Resumo do Dia</button>
-            <button id="btn-salvar-caixa">Salvar Fechamento na Nuvem</button>
+            <button id="btn-limpar">Limpar Tela</button>
+            <button id="btn-ver-resumo">Calcular Resumo da Tela</button>
+            <button id="btn-salvar-caixa">Salvar na Nuvem</button>
         </div>
 
         <div id="resumo">
@@ -111,11 +112,11 @@
         const formasDePagamento = ['CONSUMO ADM', 'CORTESIA', 'CREDITO', 'DEBITO', 'DINHEIRO', 'EVENTO', 'IFOOD', 'MARKETING', 'PERDAS', 'PIX', 'PIX MANUAL', 'TRANSFERENCIA', 'VOUCHER'];
         let todosOsLancamentos = {};
         
-        // ... (referências de elementos do DOM) ...
         const dataInput = document.getElementById('data-fechamento');
         const formasPagamentoDiv = document.getElementById('formas-pagamento');
         const btnSalvar = document.getElementById('btn-salvar-caixa');
         const btnResumo = document.getElementById('btn-ver-resumo');
+        const btnLimpar = document.getElementById('btn-limpar');
         const resumoDiv = document.getElementById('resumo');
         const resumoTitulo = document.getElementById('resumo-titulo');
         const resultadoFechamentoDiv = document.getElementById('resultado-fechamento');
@@ -197,12 +198,18 @@
             resumoDiv.classList.add('is-visible');
         };
 
+        const limparTela = () => {
+            if (confirm("Você tem certeza que deseja limpar todos os lançamentos da tela? Isso não afetará os dados já salvos na nuvem.")) {
+                todosOsLancamentos = {};
+                formasDePagamento.forEach(forma => atualizarTudo(forma));
+                resumoDiv.classList.remove('is-visible');
+            }
+        };
+
         const salvarFechamento = async () => {
-            // MELHORIA: Pedir nome do operador
             const nomeOperador = window.prompt("Digite o nome do operador de caixa:");
-            if (!nomeOperador) { // Se o usuário cancelar ou deixar em branco
-                alert("O nome do operador é obrigatório para salvar.");
-                return;
+            if (!nomeOperador) {
+                alert("O nome do operador é obrigatório para salvar."); return;
             }
 
             const data = dataInput.value;
@@ -218,16 +225,12 @@
             btnSalvar.disabled = true;
             btnSalvar.innerText = "Salvando...";
 
-            const { data: registro, error } = await supabaseClient
+            const { error } = await supabaseClient
                 .from('fechamentos')
                 .upsert({ 
-                    data_fechamento: data, 
-                    total_geral: totalGeral,
-                    detalhes: todosOsLancamentos,
-                    operador_caixa: nomeOperador // Enviando o novo campo
-                }, { onConflict: 'data_fechamento' })
-                .select()
-                .single();
+                    data_fechamento: data, total_geral: totalGeral,
+                    detalhes: todosOsLancamentos, operador_caixa: nomeOperador
+                }, { onConflict: 'data_fechamento' });
 
             if (error) {
                 console.error("Erro ao salvar:", error.message);
@@ -237,11 +240,10 @@
                 await carregarHistorico();
             }
             btnSalvar.disabled = false;
-            btnSalvar.innerText = "Salvar Fechamento na Nuvem";
+            btnSalvar.innerText = "Salvar na Nuvem";
         };
 
         const carregarHistorico = async () => {
-            // MELHORIA: Buscar também o operador_caixa
             const { data, error } = await supabaseClient
                 .from('fechamentos')
                 .select('data_fechamento, total_geral, operador_caixa')
@@ -260,11 +262,10 @@
             listaHistoricoDiv.innerHTML = '';
             data.forEach(item => {
                 const dia = new Date(item.data_fechamento + 'T00:00:00').toLocaleDateString('pt-BR');
-                const operador = item.operador_caixa || 'N/A'; // Mostra N/A se for um registro antigo
+                const operador = item.operador_caixa || 'N/A';
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'historico-item';
                 itemDiv.dataset.data = item.data_fechamento;
-                // MELHORIA: Exibir o operador
                 itemDiv.innerHTML = `
                     <div class="historico-item-linha1">
                         <span>${dia}</span>
@@ -278,6 +279,7 @@
             });
         };
 
+        // CORREÇÃO: Simplificando a busca para evitar o erro 406
         const carregarFechamentoDoDia = async (data) => {
             todosOsLancamentos = {};
             formasDePagamento.forEach(forma => atualizarTudo(forma));
@@ -285,7 +287,7 @@
 
             const { data: fechamento, error } = await supabaseClient
                 .from('fechamentos')
-                .select('detalhes')
+                .select('*') // Buscando todos os campos (*) em vez de apenas 'detalhes'
                 .eq('data_fechamento', data)
                 .single();
 
@@ -319,6 +321,7 @@
 
             btnSalvar.addEventListener('click', salvarFechamento);
             btnResumo.addEventListener('click', calcularEExibirResumo);
+            btnLimpar.addEventListener('click', limparTela);
 
             formasPagamentoDiv.addEventListener('click', (event) => {
                 if (event.target.classList.contains('btn-lancar')) lancarValor(event.target.dataset.forma);
