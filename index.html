@@ -8,7 +8,6 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
     <style>
-        /* MOVIDO PARA O TOPO para garantir o carregamento */
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
 
         :root {
@@ -32,7 +31,6 @@
             width: 100%; padding: 12px; border: 1px solid var(--cor-borda); border-radius: 8px;
             font-size: 1.1rem; margin-bottom: 25px; box-sizing: border-box;
         }
-        /* Esta regra é a chave para o layout de grade */
         .list-header {
             display: grid; 
             grid-template-columns: 1fr 160px 110px 160px; 
@@ -42,7 +40,6 @@
         .header-total { text-align: right; }
         .payment-item { padding: 15px; border-bottom: 1px solid #f1f3f5; transition: background-color 0.2s ease-in-out; }
         .payment-item:hover { background-color: #fcfcfc; }
-        /* Esta regra é a chave para o layout de grade dos itens */
         .main-line { 
             display: grid; 
             grid-template-columns: 1fr 160px 110px 160px; 
@@ -116,7 +113,6 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // --- LÓGICA DA APLICAÇÃO ---
-        // CORREÇÃO: "NARKETING" para "MARKETING"
         const formasDePagamento = ['CONSUMO ADM', 'CORTESIA', 'CREDITO', 'DEBITO', 'DINHEIRO', 'EVENTO', 'IFOOD', 'MARKETING', 'PERDAS', 'PIX', 'PIX MANUAL', 'TRANSFERENCIA', 'VOUCHER'];
         let todosOsLancamentos = {};
         
@@ -153,7 +149,6 @@
 
         const lancarValor = (forma) => {
             const campoLancamento = document.getElementById(`lancamento-${sanitizarNomeParaId(forma)}`);
-            // Melhoria: Sanitização básica, permitindo apenas números, vírgula ou ponto
             const valor = parseFloat(campoLancamento.value.replace(/[^0-9,.]/g, '').replace(',', '.'));
             if (isNaN(valor) || valor === 0) { campoLancamento.value = ''; return; }
             if (!todosOsLancamentos[forma]) todosOsLancamentos[forma] = [];
@@ -165,7 +160,6 @@
         
         const removerLancamento = (forma, index) => {
             const lancamentoParaRemover = todosOsLancamentos[forma][index];
-            // IMPLEMENTADO: Pergunta de confirmação de exclusão
             if (window.confirm(`Você realmente quer excluir o valor de ${formatarMoeda(lancamentoParaRemover)}?`)) {
                 todosOsLancamentos[forma].splice(index, 1);
                 atualizarTudo(forma);
@@ -208,14 +202,25 @@
             resumoDiv.classList.add('is-visible');
         };
 
-        const limparTela = () => {
-            if (confirm("Você tem certeza que deseja limpar todos os lançamentos da tela? Isso não afetará os dados já salvos na nuvem.")) {
+        const limparTela = (confirmar = true) => {
+            const limpar = () => {
                 todosOsLancamentos = {};
                 formasDePagamento.forEach(forma => atualizarTudo(forma));
                 resumoDiv.classList.remove('is-visible');
+                const hoje = new Date().toISOString().split('T')[0];
+                dataInput.value = hoje;
+            };
+
+            if (confirmar) {
+                if (window.confirm("Você tem certeza que deseja limpar todos os lançamentos da tela? Isso não afetará os dados já salvos na nuvem.")) {
+                    limpar();
+                }
+            } else {
+                limpar();
             }
         };
 
+        // MUDANÇA 1: Trocamos '.upsert' por '.insert'
         const salvarFechamento = async () => {
             const nomeOperador = window.prompt("Digite o nome do operador de caixa:");
             if (!nomeOperador) {
@@ -231,26 +236,33 @@
             }
             btnSalvar.disabled = true;
             btnSalvar.innerText = "Salvando...";
-            // Usa a data como chave de conflito para atualizar se já existir
-            const { error } = await supabaseClient.from('fechamentos').upsert({ 
-                data_fechamento: data, total_geral: totalGeral,
-                detalhes: todosOsLancamentos, operador_caixa: nomeOperador
-            }, { onConflict: 'data_fechamento' });
+
+            // AQUI ESTÁ A MUDANÇA PRINCIPAL: .insert() sempre cria um novo registro.
+            const { error } = await supabaseClient.from('fechamentos').insert({ 
+                data_fechamento: data, 
+                total_geral: totalGeral,
+                detalhes: todosOsLancamentos, 
+                operator_caixa: nomeOperador
+            });
+            
             if (error) {
                 alert("Ocorreu um erro ao salvar o fechamento: " + error.message);
             } else {
-                alert(`Fechamento salvo/atualizado com sucesso por ${nomeOperador}!`);
+                alert(`Fechamento salvo com sucesso por ${nomeOperador}!`);
                 await carregarHistorico();
+                limparTela(false); // Limpa a tela sem perguntar após salvar
             }
             btnSalvar.disabled = false;
             btnSalvar.innerText = "Salvar na Nuvem";
         };
 
+        // MUDANÇA 2: O histórico agora mostra a hora e usa o ID de cada fechamento.
         const carregarHistorico = async () => {
+            // O Supabase adiciona uma coluna 'created_at' por padrão, que usaremos para ordenar.
             const { data, error } = await supabaseClient
                 .from('fechamentos')
                 .select('*')
-                .order('data_fechamento', { ascending: false });
+                .order('created_at', { ascending: false }); // Ordena pelo mais recente
             if (error) {
                 listaHistoricoDiv.innerHTML = `<p style="color: red;">Erro ao carregar o histórico: ${error.message}</p>`;
                 return;
@@ -260,14 +272,19 @@
             }
             listaHistoricoDiv.innerHTML = '';
             data.forEach(item => {
-                const dia = new Date(item.data_fechamento + 'T00:00:00').toLocaleDateString('pt-BR');
-                const operador = item.operador_caixa || 'N/A';
+                // Formata data e hora para exibição
+                const dataHora = new Date(item.created_at);
+                const dia = dataHora.toLocaleDateString('pt-BR');
+                const hora = dataHora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                const operador = item.operator_caixa || 'N/A';
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'historico-item';
-                itemDiv.dataset.data = item.data_fechamento;
+                // Agora guardamos o ID único do fechamento, não a data.
+                itemDiv.dataset.id = item.id; 
                 itemDiv.innerHTML = `
                     <div class="historico-item-linha1">
-                        <span>${dia}</span>
+                        <span>${dia} - ${hora}</span>
                         <span>${formatarMoeda(item.total_geral)}</span>
                     </div>
                     <div class="historico-item-linha2">Operador(a): ${operador}</div>`;
@@ -275,43 +292,51 @@
             });
         };
 
-        const carregarFechamentoDoDia = async (data) => {
-            todosOsLancamentos = {};
-            formasDePagamento.forEach(forma => atualizarTudo(forma));
-            resumoDiv.classList.remove('is-visible');
+        // MUDANÇA 3: A função de carregar foi trocada para buscar por ID.
+        const carregarFechamentoPorId = async (id) => {
+            limparTela(false); // Limpa a tela antes de carregar dados antigos
             const { data: fechamento, error } = await supabaseClient
                 .from('fechamentos')
                 .select('*')
-                .eq('data_fechamento', data)
-                .single();
-            if (error && error.code !== 'PGRST116') { // PGRST116 = Não encontrou linha
-                 console.error("Erro ao carregar dia:", error);
+                .eq('id', id) // Busca pelo ID único
+                .single(); // .single() aqui é seguro, pois o ID é sempre único
+                
+            if (error) {
+                 console.error("Erro ao carregar fechamento por ID:", error);
+                 alert("Não foi possível carregar os detalhes deste fechamento.");
             }
-            if (fechamento && fechamento.detalhes) {
-                todosOsLancamentos = fechamento.detalhes;
+            if (fechamento) {
+                todosOsLancamentos = fechamento.detalhes || {};
+                dataInput.value = fechamento.data_fechamento; // Atualiza a data no input
                 formasDePagamento.forEach(forma => atualizarTudo(forma));
-                // OTIMIZAÇÃO: Exibe o resumo automaticamente ao carregar um dia
                 calcularEExibirResumo();
             }
         };
 
         const inicializar = async () => {
-            const hoje = new Date().toISOString().split('T')[0];
-            dataInput.value = hoje;
             gerarCamposDePagamento();
+            limparTela(false); // Garante que a tela comece limpa e com a data de hoje
             await carregarHistorico();
-            await carregarFechamentoDoDia(hoje);
-            dataInput.addEventListener('change', () => carregarFechamentoDoDia(dataInput.value));
+            
+            // MUDANÇA 4: O evento de clique agora usa o ID para carregar os dados.
             listaHistoricoDiv.addEventListener('click', async (event) => {
                 const item = event.target.closest('.historico-item');
-                if (item) {
-                    dataInput.value = item.dataset.data;
-                    await carregarFechamentoDoDia(item.dataset.data);
+                if (item && item.dataset.id) {
+                    await carregarFechamentoPorId(item.dataset.id);
                 }
             });
+
+            // O seletor de data agora serve apenas para definir a data de um *novo* fechamento.
+            // Ele não carrega mais dados automaticamente para evitar o erro 406.
+            dataInput.addEventListener('change', () => {
+                 // Opcional: você pode decidir limpar a tela se o usuário mudar a data
+                 // limparTela();
+            });
+
             btnSalvar.addEventListener('click', salvarFechamento);
             btnResumo.addEventListener('click', calcularEExibirResumo);
-            btnLimpar.addEventListener('click', limparTela);
+            btnLimpar.addEventListener('click', () => limparTela(true)); // Limpar manual pergunta
+
             formasPagamentoDiv.addEventListener('click', (event) => {
                 if (event.target.classList.contains('btn-lancar')) lancarValor(event.target.dataset.forma);
                 if (event.target.classList.contains('remove-lancamento')) removerLancamento(event.target.dataset.forma, parseInt(event.target.dataset.index));
