@@ -99,12 +99,12 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // --- LÓGICA DO SUPABASE (Revisada e Corrigida) ---
         const SUPABASE_URL = 'https://rqeqghjlbojbklmiyshp.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxZXFnaGpsYm9qYmtsbWl5c2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MTQzNzYsImV4cCI6MjA3NDQ5MDM3Nn0.oQNkIPMwmcNKCB-I4Iq2GlKqazGSjxarLtfuZbvlX4o';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxZXFnaGpsYm9qYmtsbWl5c2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MTQzNzYsImV4cCI6MjA3NDQ5MDM3Nn0.oQNkIPMwmcNKCB-I4Iq2GlKqazGSjxarLtfuZbvlX4o';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const { createClient } = supabase;
-        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+        // --- LÓGICA DA APLICAÇÃO ---
         const formasDePagamento = ['CONSUMO ADM', 'CORTESIA', 'CREDITO', 'DEBITO', 'DINHEIRO', 'EVENTO', 'IFOOD', 'MARKETING', 'PERDAS', 'PIX', 'PIX MANUAL', 'TRANSFERENCIA', 'VOUCHER'];
         let todosOsLancamentos = {};
         
@@ -207,57 +207,42 @@
             if (!nomeOperador) {
                 alert("O nome do operador é obrigatório para salvar."); return;
             }
-
             const data = dataInput.value;
             let totalGeral = 0;
             Object.values(todosOsLancamentos).forEach(lancamentos => {
                 totalGeral += lancamentos.reduce((soma, v) => soma + v, 0);
             });
-
             if (totalGeral === 0 && Object.keys(todosOsLancamentos).length === 0) {
                 alert("Não há valores para salvar."); return;
             }
-
             btnSalvar.disabled = true;
             btnSalvar.innerText = "Salvando...";
-
-            const { error } = await supabaseClient
-                .from('fechamentos')
-                .upsert({ 
-                    data_fechamento: data, total_geral: totalGeral,
-                    detalhes: todosOsLancamentos, operador_caixa: nomeOperador
-                }, { onConflict: 'data_fechamento' });
-
+            const { error } = await supabaseClient.from('fechamentos').upsert({ 
+                data_fechamento: data, total_geral: totalGeral,
+                detalhes: todosOsLancamentos, operador_caixa: nomeOperador
+            }, { onConflict: 'data_fechamento' });
             if (error) {
-                console.error("Erro ao salvar:", error.message);
                 alert("Ocorreu um erro ao salvar o fechamento: " + error.message);
-                // CORREÇÃO: Garante que o botão seja reativado mesmo em caso de erro.
-                btnSalvar.disabled = false;
-                btnSalvar.innerText = "Salvar na Nuvem";
             } else {
-                alert(`Fechamento do dia ${new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')} salvo/atualizado com sucesso por ${nomeOperador}!`);
-                btnSalvar.disabled = false;
-                btnSalvar.innerText = "Salvar na Nuvem";
+                alert(`Fechamento salvo/atualizado com sucesso por ${nomeOperador}!`);
                 await carregarHistorico();
             }
+            btnSalvar.disabled = false;
+            btnSalvar.innerText = "Salvar na Nuvem";
         };
 
         const carregarHistorico = async () => {
             const { data, error } = await supabaseClient
                 .from('fechamentos')
-                .select('data_fechamento, total_geral, operador_caixa')
+                .select('*')
                 .order('data_fechamento', { ascending: false });
-
             if (error) {
-                console.error("Erro ao carregar histórico:", error);
-                listaHistoricoDiv.innerHTML = `<p style="color: red;">Erro ao carregar o histórico. Verifique se o RLS está habilitado para SELECT.</p>`;
+                listaHistoricoDiv.innerHTML = `<p style="color: red;">Erro ao carregar o histórico: ${error.message}</p>`;
                 return;
             }
-            
             if (!data || data.length === 0) {
                 listaHistoricoDiv.innerHTML = "<p>Nenhum fechamento salvo ainda.</p>"; return;
             }
-
             listaHistoricoDiv.innerHTML = '';
             data.forEach(item => {
                 const dia = new Date(item.data_fechamento + 'T00:00:00').toLocaleDateString('pt-BR');
@@ -270,39 +255,27 @@
                         <span>${dia}</span>
                         <span>${formatarMoeda(item.total_geral)}</span>
                     </div>
-                    <div class="historico-item-linha2">
-                        Operador(a): ${operador}
-                    </div>
-                `;
+                    <div class="historico-item-linha2">Operador(a): ${operador}</div>`;
                 listaHistoricoDiv.appendChild(itemDiv);
             });
         };
 
         const carregarFechamentoDoDia = async (data) => {
-            limparTelaSemConfirmacao(); // CORREÇÃO: Função auxiliar para limpar a tela sem perguntar
-
+            todosOsLancamentos = {};
+            formasDePagamento.forEach(forma => atualizarTudo(forma));
+            resumoDiv.classList.remove('is-visible');
             const { data: fechamento, error } = await supabaseClient
                 .from('fechamentos')
                 .select('*')
                 .eq('data_fechamento', data)
                 .single();
-
             if (error && error.code !== 'PGRST116') {
                  console.error("Erro ao carregar dia:", error);
             }
-            
-            // CORREÇÃO: Acessar a propriedade 'detalhes' do objeto retornado
             if (fechamento && fechamento.detalhes) {
                 todosOsLancamentos = fechamento.detalhes;
                 formasDePagamento.forEach(forma => atualizarTudo(forma));
             }
-        };
-
-        // Função auxiliar para evitar a confirmação ao carregar dados
-        const limparTelaSemConfirmacao = () => {
-            todosOsLancamentos = {};
-            formasDePagamento.forEach(forma => atualizarTudo(forma));
-            resumoDiv.classList.remove('is-visible');
         };
 
         const inicializar = async () => {
@@ -311,22 +284,17 @@
             gerarCamposDePagamento();
             await carregarHistorico();
             await carregarFechamentoDoDia(hoje);
-
             dataInput.addEventListener('change', () => carregarFechamentoDoDia(dataInput.value));
-            
             listaHistoricoDiv.addEventListener('click', async (event) => {
                 const item = event.target.closest('.historico-item');
                 if (item) {
-                    const data = item.dataset.data;
-                    dataInput.value = data;
-                    await carregarFechamentoDoDia(data);
+                    dataInput.value = item.dataset.data;
+                    await carregarFechamentoDoDia(item.dataset.data);
                 }
             });
-
             btnSalvar.addEventListener('click', salvarFechamento);
             btnResumo.addEventListener('click', calcularEExibirResumo);
             btnLimpar.addEventListener('click', limparTela);
-
             formasPagamentoDiv.addEventListener('click', (event) => {
                 if (event.target.classList.contains('btn-lancar')) lancarValor(event.target.dataset.forma);
                 if (event.target.classList.contains('remove-lancamento')) removerLancamento(event.target.dataset.forma, parseInt(event.target.dataset.index));
