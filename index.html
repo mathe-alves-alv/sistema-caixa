@@ -28,9 +28,11 @@
         h1 { margin-bottom: 30px; }
         h2 { font-size: 1.5rem; margin-top: 40px; border-top: 1px solid var(--cor-borda); padding-top: 25px; text-align: left; }
         input[type="date"] {
-            width: 100%; padding: 12px; border: 1px solid var(--cor-borda); border-radius: 8px;
-            font-size: 1.1rem; margin-bottom: 25px; box-sizing: border-box;
+            padding: 12px; border: 1px solid var(--cor-borda); border-radius: 8px;
+            font-size: 1.1rem; box-sizing: border-box;
         }
+        #data-fechamento { width: 100%; margin-bottom: 25px; }
+
         .list-header {
             display: grid; 
             grid-template-columns: 1fr 160px 110px 160px; 
@@ -76,6 +78,26 @@
         .historico-item:hover { border-color: var(--cor-principal); background-color: #f8f9fa; }
         .historico-item-linha1 { display: flex; justify-content: space-between; width: 100%; font-weight: bold; }
         .historico-item-linha2 { font-size: 0.9rem; color: var(--cor-texto-secundario); margin-top: 5px; }
+
+        /* Estilos para o filtro do histórico */
+        .filtro-historico {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        #filtro-data-historico {
+            flex-grow: 1;
+        }
+        #btn-limpar-filtro {
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            background-color: var(--cor-texto-secundario);
+            color: white;
+        }
+        .is-hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -101,6 +123,12 @@
         </div>
         <div id="historico">
             <h2>Histórico de Fechamentos Salvos</h2>
+            
+            <div class="filtro-historico">
+                <input type="date" id="filtro-data-historico">
+                <button id="btn-limpar-filtro" class="is-hidden">Limpar Filtro</button>
+            </div>
+            
             <div id="lista-historico"><p>Carregando histórico...</p></div>
         </div>
     </div>
@@ -115,6 +143,7 @@
         // --- LÓGICA DA APLICAÇÃO ---
         const formasDePagamento = ['CONSUMO ADM', 'CORTESIA', 'CREDITO', 'DEBITO', 'DINHEIRO', 'EVENTO', 'IFOOD', 'MARKETING', 'PERDAS', 'PIX', 'PIX MANUAL', 'TRANSFERENCIA', 'VOUCHER'];
         let todosOsLancamentos = {};
+        let historicoCompleto = []; // Guarda todos os itens do histórico para filtrar
         
         const dataInput = document.getElementById('data-fechamento');
         const formasPagamentoDiv = document.getElementById('formas-pagamento');
@@ -125,6 +154,8 @@
         const resumoTitulo = document.getElementById('resumo-titulo');
         const resultadoFechamentoDiv = document.getElementById('resultado-fechamento');
         const listaHistoricoDiv = document.getElementById('lista-historico');
+        const filtroDataInput = document.getElementById('filtro-data-historico');
+        const btnLimparFiltro = document.getElementById('btn-limpar-filtro');
 
         const formatarMoeda = (valor) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const sanitizarNomeParaId = (nome) => nome.toLowerCase().replace(/ /g, '-');
@@ -220,7 +251,6 @@
             }
         };
 
-        // MUDANÇA 1: Trocamos '.upsert' por '.insert'
         const salvarFechamento = async () => {
             const nomeOperador = window.prompt("Digite o nome do operador de caixa:");
             if (!nomeOperador) {
@@ -236,8 +266,6 @@
             }
             btnSalvar.disabled = true;
             btnSalvar.innerText = "Salvando...";
-
-            // AQUI ESTÁ A MUDANÇA PRINCIPAL: .insert() sempre cria um novo registro.
             const { error } = await supabaseClient.from('fechamentos').insert({ 
                 data_fechamento: data, 
                 total_geral: totalGeral,
@@ -250,37 +278,28 @@
             } else {
                 alert(`Fechamento salvo com sucesso por ${nomeOperador}!`);
                 await carregarHistorico();
-                limparTela(false); // Limpa a tela sem perguntar após salvar
+                limparTela(false);
             }
             btnSalvar.disabled = false;
             btnSalvar.innerText = "Salvar na Nuvem";
         };
 
-        // MUDANÇA 2: O histórico agora mostra a hora e usa o ID de cada fechamento.
-        const carregarHistorico = async () => {
-            // O Supabase adiciona uma coluna 'created_at' por padrão, que usaremos para ordenar.
-            const { data, error } = await supabaseClient
-                .from('fechamentos')
-                .select('*')
-                .order('created_at', { ascending: false }); // Ordena pelo mais recente
-            if (error) {
-                listaHistoricoDiv.innerHTML = `<p style="color: red;">Erro ao carregar o histórico: ${error.message}</p>`;
+        // --- LÓGICA DO HISTÓRICO E FILTRO ---
+
+        const renderizarHistorico = (itens) => {
+            listaHistoricoDiv.innerHTML = '';
+            if (!itens || itens.length === 0) {
+                listaHistoricoDiv.innerHTML = "<p>Nenhum fechamento encontrado para esta data.</p>";
                 return;
             }
-            if (!data || data.length === 0) {
-                listaHistoricoDiv.innerHTML = "<p>Nenhum fechamento salvo ainda.</p>"; return;
-            }
-            listaHistoricoDiv.innerHTML = '';
-            data.forEach(item => {
-                // Formata data e hora para exibição
+
+            itens.forEach(item => {
                 const dataHora = new Date(item.created_at);
                 const dia = dataHora.toLocaleDateString('pt-BR');
                 const hora = dataHora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
                 const operador = item.operator_caixa || 'N/A';
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'historico-item';
-                // Agora guardamos o ID único do fechamento, não a data.
                 itemDiv.dataset.id = item.id; 
                 itemDiv.innerHTML = `
                     <div class="historico-item-linha1">
@@ -292,14 +311,43 @@
             });
         };
 
-        // MUDANÇA 3: A função de carregar foi trocada para buscar por ID.
+        const carregarHistorico = async () => {
+            const { data, error } = await supabaseClient
+                .from('fechamentos')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (error) {
+                listaHistoricoDiv.innerHTML = `<p style="color: red;">Erro ao carregar o histórico: ${error.message}</p>`;
+                return;
+            }
+            historicoCompleto = data || [];
+            renderizarHistorico(historicoCompleto);
+        };
+
+        const aplicarFiltroHistorico = () => {
+            const dataFiltro = filtroDataInput.value;
+            if (dataFiltro) {
+                const itensFiltrados = historicoCompleto.filter(item => item.data_fechamento === dataFiltro);
+                renderizarHistorico(itensFiltrados);
+                btnLimparFiltro.classList.remove('is-hidden');
+            } else {
+                renderizarHistorico(historicoCompleto); // Se o filtro estiver vazio, mostra tudo
+                btnLimparFiltro.classList.add('is-hidden');
+            }
+        };
+        
+        const limparFiltroHistorico = () => {
+            filtroDataInput.value = '';
+            aplicarFiltroHistorico();
+        };
+
         const carregarFechamentoPorId = async (id) => {
-            limparTela(false); // Limpa a tela antes de carregar dados antigos
+            limparTela(false);
             const { data: fechamento, error } = await supabaseClient
                 .from('fechamentos')
                 .select('*')
-                .eq('id', id) // Busca pelo ID único
-                .single(); // .single() aqui é seguro, pois o ID é sempre único
+                .eq('id', id)
+                .single();
                 
             if (error) {
                  console.error("Erro ao carregar fechamento por ID:", error);
@@ -307,7 +355,7 @@
             }
             if (fechamento) {
                 todosOsLancamentos = fechamento.detalhes || {};
-                dataInput.value = fechamento.data_fechamento; // Atualiza a data no input
+                dataInput.value = fechamento.data_fechamento;
                 formasDePagamento.forEach(forma => atualizarTudo(forma));
                 calcularEExibirResumo();
             }
@@ -315,28 +363,15 @@
 
         const inicializar = async () => {
             gerarCamposDePagamento();
-            limparTela(false); // Garante que a tela comece limpa e com a data de hoje
+            limparTela(false);
             await carregarHistorico();
             
-            // MUDANÇA 4: O evento de clique agora usa o ID para carregar os dados.
-            listaHistoricoDiv.addEventListener('click', async (event) => {
-                const item = event.target.closest('.historico-item');
-                if (item && item.dataset.id) {
-                    await carregarFechamentoPorId(item.dataset.id);
-                }
-            });
-
-            // O seletor de data agora serve apenas para definir a data de um *novo* fechamento.
-            // Ele não carrega mais dados automaticamente para evitar o erro 406.
-            dataInput.addEventListener('change', () => {
-                 // Opcional: você pode decidir limpar a tela se o usuário mudar a data
-                 // limparTela();
-            });
-
+            // Eventos principais
             btnSalvar.addEventListener('click', salvarFechamento);
             btnResumo.addEventListener('click', calcularEExibirResumo);
-            btnLimpar.addEventListener('click', () => limparTela(true)); // Limpar manual pergunta
-
+            btnLimpar.addEventListener('click', () => limparTela(true));
+            
+            // Eventos para lançamentos
             formasPagamentoDiv.addEventListener('click', (event) => {
                 if (event.target.classList.contains('btn-lancar')) lancarValor(event.target.dataset.forma);
                 if (event.target.classList.contains('remove-lancamento')) removerLancamento(event.target.dataset.forma, parseInt(event.target.dataset.index));
@@ -346,6 +381,16 @@
                     lancarValor(event.target.nextElementSibling.dataset.forma);
                 }
             });
+
+            // Eventos do histórico e filtro
+            listaHistoricoDiv.addEventListener('click', async (event) => {
+                const item = event.target.closest('.historico-item');
+                if (item && item.dataset.id) {
+                    await carregarFechamentoPorId(item.dataset.id);
+                }
+            });
+            filtroDataInput.addEventListener('change', aplicarFiltroHistorico);
+            btnLimparFiltro.addEventListener('click', limparFiltroHistorico);
         };
         
         inicializar();
