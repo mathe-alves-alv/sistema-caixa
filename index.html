@@ -1,330 +1,330 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fechamento de Caixa</title>
-    
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    
-    <style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fechamento de Caixa</title>
+    
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <style>
         /* MOVIDO PARA O TOPO para garantir o carregamento */
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
 
-        :root {
-            --cor-principal: #3498db; --cor-sucesso: #27ae60; --cor-perigo: #c0392b; --cor-aviso: #f39c12;
-            --cor-fundo: #f8f9fa; --cor-container: #ffffff; --cor-texto-principal: #2c3e50;
-            --cor-texto-secundario: #5d6d7e; --cor-borda: #dee2e6; --sombra-suave: 0 4px 15px rgba(0, 0, 0, 0.07);
-        }
-        
-        body {
-            font-family: 'Poppins', sans-serif; background-color: var(--cor-fundo); color: var(--cor-texto-principal);
-            margin: 0; padding: 25px; display: flex; justify-content: center; align-items: flex-start;
-        }
-        .container {
-            width: 100%; max-width: 900px; background-color: var(--cor-container); padding: 35px;
-            border-radius: 12px; box-shadow: var(--sombra-suave); border: 1px solid var(--cor-borda);
-        }
-        h1, h2 { text-align: center; margin-top: 0; }
-        h1 { margin-bottom: 30px; }
-        h2 { font-size: 1.5rem; margin-top: 40px; border-top: 1px solid var(--cor-borda); padding-top: 25px; text-align: left; }
-        input[type="date"] {
-            width: 100%; padding: 12px; border: 1px solid var(--cor-borda); border-radius: 8px;
-            font-size: 1.1rem; margin-bottom: 25px; box-sizing: border-box;
-        }
+        :root {
+            --cor-principal: #3498db; --cor-sucesso: #27ae60; --cor-perigo: #c0392b; --cor-aviso: #f39c12;
+            --cor-fundo: #f8f9fa; --cor-container: #ffffff; --cor-texto-principal: #2c3e50;
+            --cor-texto-secundario: #5d6d7e; --cor-borda: #dee2e6; --sombra-suave: 0 4px 15px rgba(0, 0, 0, 0.07);
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif; background-color: var(--cor-fundo); color: var(--cor-texto-principal);
+            margin: 0; padding: 25px; display: flex; justify-content: center; align-items: flex-start;
+        }
+        .container {
+            width: 100%; max-width: 900px; background-color: var(--cor-container); padding: 35px;
+            border-radius: 12px; box-shadow: var(--sombra-suave); border: 1px solid var(--cor-borda);
+        }
+        h1, h2 { text-align: center; margin-top: 0; }
+        h1 { margin-bottom: 30px; }
+        h2 { font-size: 1.5rem; margin-top: 40px; border-top: 1px solid var(--cor-borda); padding-top: 25px; text-align: left; }
+        input[type="date"] {
+            width: 100%; padding: 12px; border: 1px solid var(--cor-borda); border-radius: 8px;
+            font-size: 1.1rem; margin-bottom: 25px; box-sizing: border-box;
+        }
         /* Esta regra é a chave para o layout de grade */
-        .list-header {
-            display: grid; 
+        .list-header {
+            display: grid; 
             grid-template-columns: 1fr 160px 110px 160px; 
             gap: 15px; padding: 0 15px 10px;
-            font-weight: 600; color: var(--cor-texto-secundario); border-bottom: 2px solid var(--cor-borda);
-        }
-        .header-total { text-align: right; }
-        .payment-item { padding: 15px; border-bottom: 1px solid #f1f3f5; transition: background-color 0.2s ease-in-out; }
-        .payment-item:hover { background-color: #fcfcfc; }
+            font-weight: 600; color: var(--cor-texto-secundario); border-bottom: 2px solid var(--cor-borda);
+        }
+        .header-total { text-align: right; }
+        .payment-item { padding: 15px; border-bottom: 1px solid #f1f3f5; transition: background-color 0.2s ease-in-out; }
+        .payment-item:hover { background-color: #fcfcfc; }
         /* Esta regra é a chave para o layout de grade dos itens */
-        .main-line { 
+        .main-line { 
             display: grid; 
             grid-template-columns: 1fr 160px 110px 160px; 
             gap: 15px; align-items: center; 
         }
-        .main-line label { font-weight: 500; font-size: 1rem; }
-        input.lancamento-field {
-            padding: 10px; border: 1px solid var(--cor-borda); border-radius: 6px; font-size: 1rem; text-align: right;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        input.lancamento-field:focus { outline: none; border-color: var(--cor-principal); box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15); }
-        .total-field { text-align: right; font-weight: 600; font-size: 1.1rem; padding: 10px; }
-        button { border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; padding: 15px; font-size: 1rem; }
-        button.btn-lancar { background-color: var(--cor-texto-secundario); color: white; padding: 10px 15px; font-size: 0.9rem; }
-        button:hover { transform: translateY(-2px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        button:active { transform: translateY(-1px); }
-        .lancamentos-detalhe { margin-top: 12px; padding-left: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
-        .lancamento-tag { background-color: #e9ecef; color: #495057; padding: 5px 12px; border-radius: 15px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
-        .remove-lancamento { background-color: var(--cor-perigo); color: white; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-weight: bold; line-height: 20px; text-align: center; }
-        .botoes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 30px; }
-        #btn-salvar-caixa { background-color: var(--cor-sucesso); color: white; }
-        #btn-ver-resumo { background-color: var(--cor-principal); color: white; }
-        #btn-limpar { background-color: var(--cor-aviso); color: white; }
-        #resumo { margin-top: 40px; opacity: 0; max-height: 0; overflow: hidden; transition: all 0.5s ease-in-out; }
-        #resumo.is-visible { opacity: 1; max-height: 1000px; }
-        #resultado-fechamento p { font-size: 1.1rem; display: flex; justify-content: space-between; padding: 12px; margin: 0; border-bottom: 1px solid #f1f3f5; }
-        #resultado-fechamento p span { font-weight: 600; }
-        #total-geral { margin-top: 15px; font-size: 1.5rem; font-weight: 600; color: var(--cor-sucesso); background-color: #f0fff4; padding: 20px; border-radius: 8px; }
-        .historico-item {
-            display: flex; flex-direction: column; align-items: flex-start;
-            padding: 15px; border-radius: 8px; margin-bottom: 10px;
-            cursor: pointer; border: 1px solid var(--cor-borda); transition: all 0.2s;
-        }
-        .historico-item:hover { border-color: var(--cor-principal); background-color: #f8f9fa; }
-        .historico-item-linha1 { display: flex; justify-content: space-between; width: 100%; font-weight: bold; }
-        .historico-item-linha2 { font-size: 0.9rem; color: var(--cor-texto-secundario); margin-top: 5px; }
-    </style>
+        .main-line label { font-weight: 500; font-size: 1rem; }
+        input.lancamento-field {
+            padding: 10px; border: 1px solid var(--cor-borda); border-radius: 6px; font-size: 1rem; text-align: right;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input.lancamento-field:focus { outline: none; border-color: var(--cor-principal); box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15); }
+        .total-field { text-align: right; font-weight: 600; font-size: 1.1rem; padding: 10px; }
+        button { border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; padding: 15px; font-size: 1rem; }
+        button.btn-lancar { background-color: var(--cor-texto-secundario); color: white; padding: 10px 15px; font-size: 0.9rem; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        button:active { transform: translateY(-1px); }
+        .lancamentos-detalhe { margin-top: 12px; padding-left: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .lancamento-tag { background-color: #e9ecef; color: #495057; padding: 5px 12px; border-radius: 15px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+        .remove-lancamento { background-color: var(--cor-perigo); color: white; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-weight: bold; line-height: 20px; text-align: center; }
+        .botoes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 30px; }
+        #btn-salvar-caixa { background-color: var(--cor-sucesso); color: white; }
+        #btn-ver-resumo { background-color: var(--cor-principal); color: white; }
+        #btn-limpar { background-color: var(--cor-aviso); color: white; }
+        #resumo { margin-top: 40px; opacity: 0; max-height: 0; overflow: hidden; transition: all 0.5s ease-in-out; }
+        #resumo.is-visible { opacity: 1; max-height: 1000px; }
+        #resultado-fechamento p { font-size: 1.1rem; display: flex; justify-content: space-between; padding: 12px; margin: 0; border-bottom: 1px solid #f1f3f5; }
+        #resultado-fechamento p span { font-weight: 600; }
+        #total-geral { margin-top: 15px; font-size: 1.5rem; font-weight: 600; color: var(--cor-sucesso); background-color: #f0fff4; padding: 20px; border-radius: 8px; }
+        .historico-item {
+            display: flex; flex-direction: column; align-items: flex-start;
+            padding: 15px; border-radius: 8px; margin-bottom: 10px;
+            cursor: pointer; border: 1px solid var(--cor-borda); transition: all 0.2s;
+        }
+        .historico-item:hover { border-color: var(--cor-principal); background-color: #f8f9fa; }
+        .historico-item-linha1 { display: flex; justify-content: space-between; width: 100%; font-weight: bold; }
+        .historico-item-linha2 { font-size: 0.9rem; color: var(--cor-texto-secundario); margin-top: 5px; }
+    </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Fechamento de Caixa</h1>
-        <input type="date" id="data-fechamento">
-        <div class="list-header">
-            <div>Forma de Pagamento</div>
-            <div style="text-align: right;">Lançar Valor</div>
-            <div></div>
-            <div class="header-total">Total</div>
-        </div>
-        <div id="formas-pagamento"></div>
-        <div class="botoes">
-            <button id="btn-limpar">Limpar Tela</button>
-            <button id="btn-ver-resumo">Calcular Resumo da Tela</button>
-            <button id="btn-salvar-caixa">Salvar na Nuvem</button>
-        </div>
-        <div id="resumo">
-            <h2 id="resumo-titulo">Resumo do Caixa</h2>
-            <div id="resultado-fechamento"></div>
-        </div>
-        <div id="historico">
-            <h2>Histórico de Fechamentos Salvos</h2>
-            <div id="lista-historico"><p>Carregando histórico...</p></div>
-        </div>
-    </div>
+    <div class="container">
+        <h1>Fechamento de Caixa</h1>
+        <input type="date" id="data-fechamento">
+        <div class="list-header">
+            <div>Forma de Pagamento</div>
+            <div style="text-align: right;">Lançar Valor</div>
+            <div></div>
+            <div class="header-total">Total</div>
+        </div>
+        <div id="formas-pagamento"></div>
+        <div class="botoes">
+            <button id="btn-limpar">Limpar Tela</button>
+            <button id="btn-ver-resumo">Calcular Resumo da Tela</button>
+            <button id="btn-salvar-caixa">Salvar na Nuvem</button>
+        </div>
+        <div id="resumo">
+            <h2 id="resumo-titulo">Resumo do Caixa</h2>
+            <div id="resultado-fechamento"></div>
+        </div>
+        <div id="historico">
+            <h2>Histórico de Fechamentos Salvos</h2>
+            <div id="lista-historico"><p>Carregando histórico...</p></div>
+        </div>
+    </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // --- LÓGICA DO SUPABASE ---
-        const SUPABASE_URL = 'https://rqeqghjlbojbklmiyshp.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxZXFnaGpsYm9qYmtsbWl5c2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MTQzNzYsImV4cCI6MjA3NDQ5MDM3Nn0.oQNkIPMwmcNKCB-I4Iq2GlKqazGSjxarLtfuZbvlX4o';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- LÓGICA DO SUPABASE ---
+        const SUPABASE_URL = 'https://rqeqghjlbojbklmiyshp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxZXFnaGpsYm9qYmtsbWl5c2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MTQzNzYsImV4cCI6MjA3NDQ5MDM3Nn0.oQNkIPMwmcNKCB-I4Iq2GlKqazGSjxarLtfuZbvlX4o';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- LÓGICA DA APLICAÇÃO ---
-        // CORREÇÃO: "NARKETING" para "MARKETING"
-        const formasDePagamento = ['CONSUMO ADM', 'CORTESIA', 'CREDITO', 'DEBITO', 'DINHEIRO', 'EVENTO', 'IFOOD', 'MARKETING', 'PERDAS', 'PIX', 'PIX MANUAL', 'TRANSFERENCIA', 'VOUCHER'];
-        let todosOsLancamentos = {};
-        
-        const dataInput = document.getElementById('data-fechamento');
-        const formasPagamentoDiv = document.getElementById('formas-pagamento');
-        const btnSalvar = document.getElementById('btn-salvar-caixa');
-        const btnResumo = document.getElementById('btn-ver-resumo');
-        const btnLimpar = document.getElementById('btn-limpar');
-        const resumoDiv = document.getElementById('resumo');
-        const resumoTitulo = document.getElementById('resumo-titulo');
-        const resultadoFechamentoDiv = document.getElementById('resultado-fechamento');
-        const listaHistoricoDiv = document.getElementById('lista-historico');
+        // --- LÓGICA DA APLICAÇÃO ---
+        // CORREÇÃO: "NARKETING" para "MARKETING"
+        const formasDePagamento = ['CONSUMO ADM', 'CORTESIA', 'CREDITO', 'DEBITO', 'DINHEIRO', 'EVENTO', 'IFOOD', 'MARKETING', 'PERDAS', 'PIX', 'PIX MANUAL', 'TRANSFERENCIA', 'VOUCHER'];
+        let todosOsLancamentos = {};
+        
+        const dataInput = document.getElementById('data-fechamento');
+        const formasPagamentoDiv = document.getElementById('formas-pagamento');
+        const btnSalvar = document.getElementById('btn-salvar-caixa');
+        const btnResumo = document.getElementById('btn-ver-resumo');
+        const btnLimpar = document.getElementById('btn-limpar');
+        const resumoDiv = document.getElementById('resumo');
+        const resumoTitulo = document.getElementById('resumo-titulo');
+        const resultadoFechamentoDiv = document.getElementById('resultado-fechamento');
+        const listaHistoricoDiv = document.getElementById('lista-historico');
 
-        const formatarMoeda = (valor) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const sanitizarNomeParaId = (nome) => nome.toLowerCase().replace(/ /g, '-');
-        
-        const atualizarTudo = (forma) => {
-            const lancamentos = todosOsLancamentos[forma] || [];
-            const total = lancamentos.reduce((soma, valor) => soma + valor, 0);
-            const totalField = document.getElementById(`total-${sanitizarNomeParaId(forma)}`);
-            if (totalField) totalField.textContent = formatarMoeda(total);
+        const formatarMoeda = (valor) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const sanitizarNomeParaId = (nome) => nome.toLowerCase().replace(/ /g, '-');
+        
+        const atualizarTudo = (forma) => {
+            const lancamentos = todosOsLancamentos[forma] || [];
+            const total = lancamentos.reduce((soma, valor) => soma + valor, 0);
+            const totalField = document.getElementById(`total-${sanitizarNomeParaId(forma)}`);
+            if (totalField) totalField.textContent = formatarMoeda(total);
 
-            const listaDetalheDiv = document.getElementById(`detalhe-${sanitizarNomeParaId(forma)}`);
-            if(listaDetalheDiv) {
-                listaDetalheDiv.innerHTML = '';
-                lancamentos.forEach((valor, index) => {
-                    const tag = document.createElement('div');
-                    tag.className = 'lancamento-tag';
-                    tag.innerHTML = `<span>${formatarMoeda(valor)}</span><button class="remove-lancamento" data-forma="${forma}" data-index="${index}">&times;</button>`;
-                    listaDetalheDiv.appendChild(tag);
-                });
-            }
-        };
+            const listaDetalheDiv = document.getElementById(`detalhe-${sanitizarNomeParaId(forma)}`);
+            if(listaDetalheDiv) {
+                listaDetalheDiv.innerHTML = '';
+                lancamentos.forEach((valor, index) => {
+                    const tag = document.createElement('div');
+                    tag.className = 'lancamento-tag';
+                    tag.innerHTML = `<span>${formatarMoeda(valor)}</span><button class="remove-lancamento" data-forma="${forma}" data-index="${index}">&times;</button>`;
+                    listaDetalheDiv.appendChild(tag);
+                });
+            }
+        };
 
-        const lancarValor = (forma) => {
-            const campoLancamento = document.getElementById(`lancamento-${sanitizarNomeParaId(forma)}`);
-            // Melhoria: Sanitização básica, permitindo apenas números, vírgula ou ponto
-            const valor = parseFloat(campoLancamento.value.replace(/[^0-9,.]/g, '').replace(',', '.'));
-            if (isNaN(valor) || valor === 0) { campoLancamento.value = ''; return; }
-            if (!todosOsLancamentos[forma]) todosOsLancamentos[forma] = [];
-            todosOsLancamentos[forma].push(valor);
-            atualizarTudo(forma);
-            campoLancamento.value = ''; 
-            campoLancamento.focus();
-        };
-        
-        const removerLancamento = (forma, index) => {
-            const lancamentoParaRemover = todosOsLancamentos[forma][index];
-            // IMPLEMENTADO: Pergunta de confirmação de exclusão
-            if (window.confirm(`Você realmente quer excluir o valor de ${formatarMoeda(lancamentoParaRemover)}?`)) {
-                todosOsLancamentos[forma].splice(index, 1);
-                atualizarTudo(forma);
-            }
-        };
+        const lancarValor = (forma) => {
+            const campoLancamento = document.getElementById(`lancamento-${sanitizarNomeParaId(forma)}`);
+            // Melhoria: Sanitização básica, permitindo apenas números, vírgula ou ponto
+            const valor = parseFloat(campoLancamento.value.replace(/[^0-9,.]/g, '').replace(',', '.'));
+            if (isNaN(valor) || valor === 0) { campoLancamento.value = ''; return; }
+            if (!todosOsLancamentos[forma]) todosOsLancamentos[forma] = [];
+            todosOsLancamentos[forma].push(valor);
+            atualizarTudo(forma);
+            campoLancamento.value = ''; 
+            campoLancamento.focus();
+        };
+        
+        const removerLancamento = (forma, index) => {
+            const lancamentoParaRemover = todosOsLancamentos[forma][index];
+            // IMPLEMENTADO: Pergunta de confirmação de exclusão
+            if (window.confirm(`Você realmente quer excluir o valor de ${formatarMoeda(lancamentoParaRemover)}?`)) {
+                todosOsLancamentos[forma].splice(index, 1);
+                atualizarTudo(forma);
+            }
+        };
 
-        const gerarCamposDePagamento = () => {
-            formasPagamentoDiv.innerHTML = '';
-            formasDePagamento.forEach(forma => {
-                const idForma = sanitizarNomeParaId(forma);
-                const campoHTML = `
-                    <div class="payment-item">
-                        <div class="main-line">
-                            <label for="lancamento-${idForma}">${forma}</label>
-                            <input type="text" id="lancamento-${idForma}" class="lancamento-field" placeholder="0,00">
-                            <button class="btn-lancar" data-forma="${forma}">Lançar</button>
-                            <div id="total-${idForma}" class="total-field">R$ 0,00</div>
-                        </div>
-                        <div class="lancamentos-detalhe" id="detalhe-${idForma}"></div>
-                    </div>`;
-                formasPagamentoDiv.innerHTML += campoHTML;
-            });
-        };
-        
-        const calcularEExibirResumo = () => {
-            let totalGeral = 0;
-            let resumoHTML = '';
-            const dataSelecionada = new Date(dataInput.value + 'T00:00:00').toLocaleDateString('pt-BR');
-            resumoTitulo.innerText = `Resumo do Caixa - ${dataSelecionada}`;
-            formasDePagamento.sort().forEach(forma => {
-                const lancamentos = todosOsLancamentos[forma] || [];
-                const totalForma = lancamentos.reduce((soma, valor) => soma + valor, 0);
-                if (totalForma > 0) {
-                    resumoHTML += `<p>${forma}: <span>${formatarMoeda(totalForma)}</span></p>`;
-                }
-                totalGeral += totalForma;
-            });
-            resumoHTML += `<p id="total-geral">TOTAL GERAL: <span>${formatarMoeda(totalGeral)}</span></p>`;
-            resultadoFechamentoDiv.innerHTML = resumoHTML;
-            resumoDiv.classList.add('is-visible');
-        };
+        const gerarCamposDePagamento = () => {
+            formasPagamentoDiv.innerHTML = '';
+            formasDePagamento.forEach(forma => {
+                const idForma = sanitizarNomeParaId(forma);
+                const campoHTML = `
+                    <div class="payment-item">
+                        <div class="main-line">
+                            <label for="lancamento-${idForma}">${forma}</label>
+                            <input type="text" id="lancamento-${idForma}" class="lancamento-field" placeholder="0,00">
+                            <button class="btn-lancar" data-forma="${forma}">Lançar</button>
+                            <div id="total-${idForma}" class="total-field">R$ 0,00</div>
+                        </div>
+                        <div class="lancamentos-detalhe" id="detalhe-${idForma}"></div>
+                    </div>`;
+                formasPagamentoDiv.innerHTML += campoHTML;
+            });
+        };
+        
+        const calcularEExibirResumo = () => {
+            let totalGeral = 0;
+            let resumoHTML = '';
+            const dataSelecionada = new Date(dataInput.value + 'T00:00:00').toLocaleDateString('pt-BR');
+            resumoTitulo.innerText = `Resumo do Caixa - ${dataSelecionada}`;
+            formasDePagamento.sort().forEach(forma => {
+                const lancamentos = todosOsLancamentos[forma] || [];
+                const totalForma = lancamentos.reduce((soma, valor) => soma + valor, 0);
+                if (totalForma > 0) {
+                    resumoHTML += `<p>${forma}: <span>${formatarMoeda(totalForma)}</span></p>`;
+                }
+                totalGeral += totalForma;
+            });
+            resumoHTML += `<p id="total-geral">TOTAL GERAL: <span>${formatarMoeda(totalGeral)}</span></p>`;
+            resultadoFechamentoDiv.innerHTML = resumoHTML;
+            resumoDiv.classList.add('is-visible');
+        };
 
-        const limparTela = () => {
-            if (confirm("Você tem certeza que deseja limpar todos os lançamentos da tela? Isso não afetará os dados já salvos na nuvem.")) {
-                todosOsLancamentos = {};
-                formasDePagamento.forEach(forma => atualizarTudo(forma));
-                resumoDiv.classList.remove('is-visible');
-            }
-        };
+        const limparTela = () => {
+            if (confirm("Você tem certeza que deseja limpar todos os lançamentos da tela? Isso não afetará os dados já salvos na nuvem.")) {
+                todosOsLancamentos = {};
+                formasDePagamento.forEach(forma => atualizarTudo(forma));
+                resumoDiv.classList.remove('is-visible');
+            }
+        };
 
-        const salvarFechamento = async () => {
-            const nomeOperador = window.prompt("Digite o nome do operador de caixa:");
-            if (!nomeOperador) {
-                alert("O nome do operador é obrigatório para salvar."); return;
-            }
-            const data = dataInput.value;
-            let totalGeral = 0;
-            Object.values(todosOsLancamentos).forEach(lancamentos => {
-                totalGeral += lancamentos.reduce((soma, v) => soma + v, 0);
-            });
-            if (totalGeral === 0 && Object.keys(todosOsLancamentos).length === 0) {
-                alert("Não há valores para salvar."); return;
-            }
-            btnSalvar.disabled = true;
-            btnSalvar.innerText = "Salvando...";
-            // Usa a data como chave de conflito para atualizar se já existir
-            const { error } = await supabaseClient.from('fechamentos').upsert({ 
-                data_fechamento: data, total_geral: totalGeral,
-                detalhes: todosOsLancamentos, operador_caixa: nomeOperador
-            }, { onConflict: 'data_fechamento' });
-            if (error) {
-                alert("Ocorreu um erro ao salvar o fechamento: " + error.message);
-            } else {
-                alert(`Fechamento salvo/atualizado com sucesso por ${nomeOperador}!`);
-                await carregarHistorico();
-            }
-            btnSalvar.disabled = false;
-            btnSalvar.innerText = "Salvar na Nuvem";
-        };
+        const salvarFechamento = async () => {
+            const nomeOperador = window.prompt("Digite o nome do operador de caixa:");
+            if (!nomeOperador) {
+                alert("O nome do operador é obrigatório para salvar."); return;
+            }
+            const data = dataInput.value;
+            let totalGeral = 0;
+            Object.values(todosOsLancamentos).forEach(lancamentos => {
+                totalGeral += lancamentos.reduce((soma, v) => soma + v, 0);
+            });
+            if (totalGeral === 0 && Object.keys(todosOsLancamentos).length === 0) {
+                alert("Não há valores para salvar."); return;
+            }
+            btnSalvar.disabled = true;
+            btnSalvar.innerText = "Salvando...";
+            // Usa a data como chave de conflito para atualizar se já existir
+            const { error } = await supabaseClient.from('fechamentos').upsert({ 
+                data_fechamento: data, total_geral: totalGeral,
+                detalhes: todosOsLancamentos, operador_caixa: nomeOperador
+            }, { onConflict: 'data_fechamento' });
+            if (error) {
+                alert("Ocorreu um erro ao salvar o fechamento: " + error.message);
+            } else {
+                alert(`Fechamento salvo/atualizado com sucesso por ${nomeOperador}!`);
+                await carregarHistorico();
+            }
+            btnSalvar.disabled = false;
+            btnSalvar.innerText = "Salvar na Nuvem";
+        };
 
-        const carregarHistorico = async () => {
-            const { data, error } = await supabaseClient
-                .from('fechamentos')
-                .select('*')
-                .order('data_fechamento', { ascending: false });
-            if (error) {
-                listaHistoricoDiv.innerHTML = `<p style="color: red;">Erro ao carregar o histórico: ${error.message}</p>`;
-                return;
-            }
-            if (!data || data.length === 0) {
-                listaHistoricoDiv.innerHTML = "<p>Nenhum fechamento salvo ainda.</p>"; return;
-            }
-            listaHistoricoDiv.innerHTML = '';
-            data.forEach(item => {
-                const dia = new Date(item.data_fechamento + 'T00:00:00').toLocaleDateString('pt-BR');
-                const operador = item.operador_caixa || 'N/A';
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'historico-item';
-                itemDiv.dataset.data = item.data_fechamento;
-                itemDiv.innerHTML = `
-                    <div class="historico-item-linha1">
-                        <span>${dia}</span>
-                        <span>${formatarMoeda(item.total_geral)}</span>
-                    </div>
-                    <div class="historico-item-linha2">Operador(a): ${operador}</div>`;
-                listaHistoricoDiv.appendChild(itemDiv);
-            });
-        };
+        const carregarHistorico = async () => {
+            const { data, error } = await supabaseClient
+                .from('fechamentos')
+                .select('*')
+                .order('data_fechamento', { ascending: false });
+            if (error) {
+                listaHistoricoDiv.innerHTML = `<p style="color: red;">Erro ao carregar o histórico: ${error.message}</p>`;
+                return;
+            }
+            if (!data || data.length === 0) {
+                listaHistoricoDiv.innerHTML = "<p>Nenhum fechamento salvo ainda.</p>"; return;
+            }
+            listaHistoricoDiv.innerHTML = '';
+            data.forEach(item => {
+                const dia = new Date(item.data_fechamento + 'T00:00:00').toLocaleDateString('pt-BR');
+                const operador = item.operador_caixa || 'N/A';
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'historico-item';
+                itemDiv.dataset.data = item.data_fechamento;
+                itemDiv.innerHTML = `
+                    <div class="historico-item-linha1">
+                        <span>${dia}</span>
+                        <span>${formatarMoeda(item.total_geral)}</span>
+                    </div>
+                    <div class="historico-item-linha2">Operador(a): ${operador}</div>`;
+                listaHistoricoDiv.appendChild(itemDiv);
+            });
+        };
 
-        const carregarFechamentoDoDia = async (data) => {
-            todosOsLancamentos = {};
-            formasDePagamento.forEach(forma => atualizarTudo(forma));
-            resumoDiv.classList.remove('is-visible');
-            const { data: fechamento, error } = await supabaseClient
-                .from('fechamentos')
-                .select('*')
-                .eq('data_fechamento', data)
-                .single();
-            if (error && error.code !== 'PGRST116') { // PGRST116 = Não encontrou linha
-                 console.error("Erro ao carregar dia:", error);
-            }
-            if (fechamento && fechamento.detalhes) {
-                todosOsLancamentos = fechamento.detalhes;
-                formasDePagamento.forEach(forma => atualizarTudo(forma));
-                // OTIMIZAÇÃO: Exibe o resumo automaticamente ao carregar um dia
-                calcularEExibirResumo();
-            }
-        };
+        const carregarFechamentoDoDia = async (data) => {
+            todosOsLancamentos = {};
+            formasDePagamento.forEach(forma => atualizarTudo(forma));
+            resumoDiv.classList.remove('is-visible');
+            const { data: fechamento, error } = await supabaseClient
+                .from('fechamentos')
+                .select('*')
+                .eq('data_fechamento', data)
+                .single();
+            if (error && error.code !== 'PGRST116') { // PGRST116 = Não encontrou linha
+                 console.error("Erro ao carregar dia:", error);
+            }
+            if (fechamento && fechamento.detalhes) {
+                todosOsLancamentos = fechamento.detalhes;
+                formasDePagamento.forEach(forma => atualizarTudo(forma));
+                // OTIMIZAÇÃO: Exibe o resumo automaticamente ao carregar um dia
+                calcularEExibirResumo();
+            }
+        };
 
-        const inicializar = async () => {
-            const hoje = new Date().toISOString().split('T')[0];
-            dataInput.value = hoje;
-            gerarCamposDePagamento();
-            await carregarHistorico();
-            await carregarFechamentoDoDia(hoje);
-            dataInput.addEventListener('change', () => carregarFechamentoDoDia(dataInput.value));
-            listaHistoricoDiv.addEventListener('click', async (event) => {
-                const item = event.target.closest('.historico-item');
-                if (item) {
-                    dataInput.value = item.dataset.data;
-                    await carregarFechamentoDoDia(item.dataset.data);
-                }
-            });
-            btnSalvar.addEventListener('click', salvarFechamento);
-            btnResumo.addEventListener('click', calcularEExibirResumo);
-            btnLimpar.addEventListener('click', limparTela);
-            formasPagamentoDiv.addEventListener('click', (event) => {
-                if (event.target.classList.contains('btn-lancar')) lancarValor(event.target.dataset.forma);
-                if (event.target.classList.contains('remove-lancamento')) removerLancamento(event.target.dataset.forma, parseInt(event.target.dataset.index));
-            });
-            formasPagamentoDiv.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter' && event.target.classList.contains('lancamento-field')) {
-                    lancarValor(event.target.nextElementSibling.dataset.forma);
-                }
-            });
-        };
-        
-        inicializar();
-    });
-    </script>
+        const inicializar = async () => {
+            const hoje = new Date().toISOString().split('T')[0];
+            dataInput.value = hoje;
+            gerarCamposDePagamento();
+            await carregarHistorico();
+            await carregarFechamentoDoDia(hoje);
+            dataInput.addEventListener('change', () => carregarFechamentoDoDia(dataInput.value));
+            listaHistoricoDiv.addEventListener('click', async (event) => {
+                const item = event.target.closest('.historico-item');
+                if (item) {
+                    dataInput.value = item.dataset.data;
+                    await carregarFechamentoDoDia(item.dataset.data);
+                }
+            });
+            btnSalvar.addEventListener('click', salvarFechamento);
+            btnResumo.addEventListener('click', calcularEExibirResumo);
+            btnLimpar.addEventListener('click', limparTela);
+            formasPagamentoDiv.addEventListener('click', (event) => {
+                if (event.target.classList.contains('btn-lancar')) lancarValor(event.target.dataset.forma);
+                if (event.target.classList.contains('remove-lancamento')) removerLancamento(event.target.dataset.forma, parseInt(event.target.dataset.index));
+            });
+            formasPagamentoDiv.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' && event.target.classList.contains('lancamento-field')) {
+                    lancarValor(event.target.nextElementSibling.dataset.forma);
+                }
+            });
+        };
+        
+        inicializar();
+    });
+    </script>
 </body>
 </html>
